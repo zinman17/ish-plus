@@ -44,12 +44,18 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # macos-15 runner image pruned the iOS 18.1 platform from Xcode 16.1's bundle
-  # (Xcode 16.1 itself is present, but `xcodebuild -destination generic/platform=iOS`
-  # then reports "iOS 18.1 is not installed"). Xcode 16.4 is the runner default
-  # and ships a fully-installed iOS 18.5 platform; pin to it. Verify before
-  # building in the "Verify iOS SDK" step below.
-  XCODE_VERSION: '16.4'
+  # Xcode history on this branch:
+  #  - 16.1: macos-15 pruned its iOS 18.1 platform → "iOS 18.1 is not installed"
+  #  - 16.4: works for QEMU/MoltenVK, but ships Swift 6.1.0, and the SwiftTerm
+  #          submodule (deps/SwiftTerm @ dfd3444) declares
+  #          `swift-tools-version:6.2` in its Package.swift — xcodebuild fails
+  #          with "package 'swiftterm' is using Swift tools version 6.2.0 but
+  #          the installed version is 6.1.0" (exit 74).
+  #  - 26.2: ships Swift 6.2 + a fully-installed iOS 26.2 platform. Used now.
+  # The QEMU/ANGLE builds already pass -Wno-error and
+  # GCC_TREAT_WARNINGS_AS_ERRORS=NO, so the newer clang's additional warnings
+  # won't break them. Verified before building in the "Verify iOS SDK" step.
+  XCODE_VERSION: '26.2'
   SCHEME: iSH
   CONFIGURATION: Release
   IPA_NAME: iSH-Plus-LineageOS17-Android10-A13.ipa
@@ -95,6 +101,23 @@ jobs:
             exit 1
           fi
           echo "OK: iOS SDK at $SDK_PATH is fully installed"
+          echo "=== verify Swift toolchain meets SwiftTerm's swift-tools-version:6.2 ==="
+          # deps/SwiftTerm/Package.swift declares `swift-tools-version:6.2`.
+          # xcodebuild's SPM resolver fails with exit 74 if the installed
+          # Swift is older. Catch it here in seconds, not 30 min into the build.
+          SWIFT_BIN="$(xcrun --find swift)"
+          SWIFT_VER="$("$SWIFT_BIN" --version | head -1)"
+          echo "Swift: $SWIFT_VER"
+          case "$SWIFT_VER" in
+            *'Swift 6.2'*|*'Swift 6.3'*|*'Swift 6.4'*|*'Swift 6.5'*|*'Swift 7'*)
+              echo "OK: Swift >= 6.2 (required by SwiftTerm Package.swift)"
+              ;;
+            *)
+              echo "ERROR: Swift < 6.2 — SwiftTerm submodule requires swift-tools-version:6.2."
+              echo "Bump XCODE_VERSION in the workflow env (26.2+ ships Swift 6.2)."
+              exit 1
+              ;;
+          esac
 
       - name: Install Homebrew build dependencies
         # cmake, ninja, meson, pkg-config: QEMU + meson build system.
