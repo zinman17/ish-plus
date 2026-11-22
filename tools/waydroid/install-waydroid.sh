@@ -58,17 +58,27 @@ if [ ! -s "$IMGDIR/system.img" ]; then
     if [ -f /opt/ishplus/android/system.img ]; then
         sudo cp /opt/ishplus/android/system.img "$IMGDIR/system.img"
     else
-        # Pull the LineageOS 17.1 vanilla image-set directly
-        curl -fL --retry 3 -o "$IMGDIR/system.img" \
-            "https://sourceforge.net/projects/waydroid/files/images/system/lineage/lineage-17.1-20241220-VANILLA-arm64/system.img/download"
+        # Pull the LineageOS 20.0 (Android 13) vanilla image-set directly.
+        # Waydroid ships images as .zip containing the .img; unzip after download.
+        # If this 404s, browse the waydroid_arm64 dir for the current VANILLA zip:
+        #   https://sourceforge.net/projects/waydroid/files/images/system/lineage/waydroid_arm64/
+        sys_zip=$(mktemp)
+        curl -fL --retry 3 -o "$sys_zip" \
+            "https://sourceforge.net/projects/waydroid/files/images/system/lineage/waydroid_arm64/lineage-20.0-20260927-VANILLA-waydroid_arm64-system.zip/download"
+        sudo unzip -o -j "$sys_zip" '*.img' -d "$IMGDIR" && sudo mv "$IMGDIR/system.img" "$IMGDIR/system.img" 2>/dev/null || true
+        rm -f "$sys_zip"
     fi
 fi
 if [ ! -s "$IMGDIR/vendor.img" ]; then
     if [ -f /opt/ishplus/android/vendor.img ]; then
         sudo cp /opt/ishplus/android/vendor.img "$IMGDIR/vendor.img"
     else
-        curl -fL --retry 3 -o "$IMGDIR/vendor.img" \
-            "https://sourceforge.net/projects/waydroid/files/images/vendor/lineage/lineage-17.1-20241220-VANILLA-arm64/vendor.img/download"
+        # Matching MAINLINE vendor image (see system branch above for URL strategy).
+        ven_zip=$(mktemp)
+        curl -fL --retry 3 -o "$ven_zip" \
+            "https://sourceforge.net/projects/waydroid/files/images/vendor/waydroid_arm64/lineage-20.0-20260927-MAINLINE-waydroid_arm64-vendor.zip/download"
+        sudo unzip -o -j "$ven_zip" '*.img' -d "$IMGDIR" && sudo mv "$IMGDIR/vendor.img" "$IMGDIR/vendor.img" 2>/dev/null || true
+        rm -f "$ven_zip"
     fi
 fi
 
@@ -79,7 +89,7 @@ fi
 PROPDIR=/var/lib/waydroid/overlay
 sudo mkdir -p "$PROPDIR/system/system"
 sudo tee "$PROPDIR/system/system/build.prop" >/dev/null <<'EOF'
-# iSH+ LineageOS 17.1 / Android 10 overrides (written by install-waydroid.sh)
+# iSH+ LineageOS 20.0 / Android 13 overrides (written by install-waydroid.sh)
 # Hardware gralloc/EGL: gbm + mesa — the path that turns SurfaceFlinger's
 # GL output into dma-buf fds virglrenderer consumes. Android's default
 # SwiftShader path is replaced.
