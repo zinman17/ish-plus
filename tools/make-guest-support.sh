@@ -23,10 +23,13 @@ WORK="$ROOT/build-guest/support"
 OUT="$ROOT/build-guest/support.img"
 ALPINE_VERSION=3.24.4
 
-FEX_VERSION="2611-1~n"
+# FEX 2611-1~n was superseded by 2611.1-1~n (a point release). If this 404s
+# again, check https://ppa.launchpadcontent.net/fex-emu/fex/ubuntu/pool/main/f/fex-emu-armv8.4/
+# for the current ~n (Noble/24.04) deb and re-compute the sha256.
+FEX_VERSION="2611.1-1~n"
 FEX_PPA=https://ppa.launchpadcontent.net/fex-emu/fex/ubuntu
 FEX_DEB="pool/main/f/fex-emu-armv8.4/fex-emu-armv8.4_${FEX_VERSION}_arm64.deb"
-FEX_SHA256=37da9f385a8908e0d0f2691e718d41fe40fae8fd842d772151bc97402414b0a4
+FEX_SHA256=50c2b619d29217b720cbcd8b29a73ae2a834e30e7b45de971ae295d183c536bd
 UBUNTU=http://ports.ubuntu.com/ubuntu-ports
 UBUNTU_DEBS=(
     # libc6_2.39-0ubuntu8.9_arm64.deb 404'd on Ubuntu ports (Ubuntu rotated
