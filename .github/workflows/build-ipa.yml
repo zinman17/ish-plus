@@ -108,16 +108,17 @@ jobs:
           SWIFT_BIN="$(xcrun --find swift)"
           SWIFT_VER="$("$SWIFT_BIN" --version | head -1)"
           echo "Swift: $SWIFT_VER"
-          case "$SWIFT_VER" in
-            *'Swift 6.2'*|*'Swift 6.3'*|*'Swift 6.4'*|*'Swift 6.5'*|*'Swift 7'*)
-              echo "OK: Swift >= 6.2 (required by SwiftTerm Package.swift)"
-              ;;
-            *)
-              echo "ERROR: Swift < 6.2 — SwiftTerm submodule requires swift-tools-version:6.2."
-              echo "Bump XCODE_VERSION in the workflow env (26.2+ ships Swift 6.2)."
-              exit 1
-              ;;
-          esac
+          # `swift --version` prints e.g. "Apple Swift version 6.2.3 (...)";
+          # extract the major.minor and compare numerically.
+          SWIFT_MAJMIN="$(echo "$SWIFT_VER" | sed -nE 's/.*Swift version ([0-9]+)\.([0-9]+).*/\1.\2/p')"
+          SWIFT_OK="$(awk -v v="$SWIFT_MAJMIN" 'BEGIN{split(v,a,"."); if (a[1]>6 || (a[1]==6 && a[2]>=2)) print "1"; else print "0"}')"
+          if [ "$SWIFT_OK" = "1" ]; then
+            echo "OK: Swift $SWIFT_MAJMIN >= 6.2 (required by SwiftTerm Package.swift)"
+          else
+            echo "ERROR: Swift $SWIFT_MAJMIN < 6.2 — SwiftTerm submodule requires swift-tools-version:6.2."
+            echo "Bump XCODE_VERSION in the workflow env (26.2+ ships Swift 6.2)."
+            exit 1
+          fi
 
       - name: Install Homebrew build dependencies
         # cmake, ninja, meson, pkg-config: QEMU + meson build system.
